@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ImgConvert</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fafbfc;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #222;
+    min-height: 100vh;
+    width: 100vw;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .container {
+    width: 100%;
+    max-width: 410px;
+    margin: 2.5rem auto;
+    padding: 2rem 1.2rem 2.7rem 1.2rem;
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 16px rgba(80,90,130,0.09), 0 1px 5px rgba(80,90,130,0.05);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1245B3;
+    margin: 0 0 1.5rem 0;
+    letter-spacing: 0.5px;
+  }
+  label {
+    font-size: 1.07rem;
+    font-weight: 500;
+    color: #2a3a52;
+    margin-top: 1.1rem;
+    margin-bottom: 0.22rem;
+  }
+  input[type="file"], input[type="text"], select {
+    background: #F7F8FA;
+    font-size: 1.08rem;
+    padding: 0.58rem 0.9rem;
+    border: 1px solid #dde2ee;
+    border-radius: 7px;
+    margin-bottom: 0.35rem;
+    box-sizing: border-box;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="file"]:focus, input[type="text"]:focus, select:focus {
+    border-color: #1245B3;
+  }
+  select:disabled, input:disabled {
+    background: #F6F8FA;
+    color: #b8b8b8;
+  }
+  #preview {
+    display: none;
+    margin: 1.0rem auto 0.7rem auto;
+    border-radius: 9px;
+    box-shadow: 0 1px 7px rgba(80,90,130,0.08);
+    border: 1px solid #dde2ee;
+    max-width: 100%;
+    max-height: 210px;
+    object-fit: contain;
+    background: #eef0f2;
+  }
+  .group {
+    margin-bottom: 0.65rem;
+  }
+  button#convert {
+    background: #1245B3;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 1.13rem;
+    font-weight: 600;
+    padding: 0.8rem;
+    width: 100%;
+    margin-top: 0.6rem;
+    margin-bottom: 0.3rem;
+    box-shadow: 0 1px 8px rgba(80,90,130,0.07);
+    transition: background 0.18s;
+    cursor: pointer;
+  }
+  button#convert:active { background: #0D337B; }
+  button#convert:disabled {
+    background: #e6eaf1;
+    color: #a2a6aa;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #888;
+    font-weight: 500;
+    font-size: 1.07rem;
+    padding: 0.38rem 1.1rem 0.6rem 1.1rem;
+    border-top: 1px solid #e5e8eb;
+    width: 100%;
+    max-width: 410px;
+    text-align: center;
+    z-index: 1000;
+    user-select: none;
+    border-radius: 0 0 14px 14px;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>ImgConvert</h1>
+    <div class="group">
+      <label for="upload">Upload Image</label>
+      <input type="file" id="upload" accept=".jpg,.jpeg,.png,.webp" />
+      <img id="preview" alt="Image preview" />
+    </div>
+    <div class="group">
+      <label for="format">Convert to format</label>
+      <select id="format" disabled>
+        <option value="">Select format...</option>
+      </select>
+    </div>
+    <div class="group">
+      <label for="filename">Custom file name (without extension)</label>
+      <input type="text" id="filename" placeholder="Enter custom file name" disabled />
+    </div>
+    <button id="convert" disabled>Convert & Download</button>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+  <div class="footer">Made with ❤️ by Sauravhhh</div>
+<script>
+  const upload = document.getElementById('upload');
+  const preview = document.getElementById('preview');
+  const formatSelect = document.getElementById('format');
+  const filenameInput = document.getElementById('filename');
+  const convertBtn = document.getElementById('convert');
+  const canvas = document.getElementById('canvas');
+  let img = null, originalName = '';
+  const formats = ['jpeg', 'jpg', 'png', 'webp'];
+  upload.addEventListener('change', () => {
+    const file = upload.files[0];
+    if (!file) { resetUI(); return; }
+    originalName = file.name.split('.').slice(0, -1).join('.');
+    const ext = file.name.split('.').pop().toLowerCase();
+    const fileType = file.type.toLowerCase();
+    if (!['jpg','jpeg','png','webp','image/jpeg','image/png'].some(e => fileType.includes(e) || ext === e)) {
+      alert('Supported formats: JPG, JPEG, PNG, WebP.');
+      resetUI();
+      return;
+    }
+    formatSelect.innerHTML = formats.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join('');
+    formatSelect.disabled = false;
+    filenameInput.disabled = false;
+    convertBtn.disabled = false;
+    const reader = new FileReader();
+    reader.onload = e => {
+      img = new Image();
+      img.onload = () => {
+        canvas.style.display = 'none';
+        preview.src = img.src;
+        preview.style.display = 'block';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  convertBtn.addEventListener('click', () => {
+    const outputFormat = formatSelect.value.toLowerCase();
+    if (!outputFormat) { alert('Select format.'); return; }
+    let fileName = filenameInput.value.trim() || originalName || 'converted_image';
+    if (!img) { alert('Upload a valid image.'); return; }
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    let mimeType = outputFormat === 'jpg' || outputFormat === 'jpeg' ? 'image/jpeg' :
+                   outputFormat === 'webp' ? 'image/webp' : 'image/png';
+    const quality = mimeType === 'image/jpeg' || mimeType === 'image/webp' ? 0.92 : undefined;
+    canvas.toBlob(blob => {
+      if(blob){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName + '.' + outputFormat;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } else {
+        alert('Conversion failed.');
+      }
+    }, mimeType, quality);
+  });
+  function resetUI(){
+    formatSelect.innerHTML = '<option value="">Select format...</option>';
+    formatSelect.disabled = true;
+    filenameInput.value = '';
+    filenameInput.disabled = true;
+    convertBtn.disabled = true;
+    preview.style.display = 'none';
+    preview.src = '';
+    img = null;
+    originalName = '';
+  }
+</script>
+</body>
+</html>
