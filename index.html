@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ImgConvert</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: white;
+    color: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    min-height: 100vh;
+    padding-bottom: 1.5rem; /* reduced space for footer */
+  }
+  input, select, button {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border: 1px solid #111;
+    border-radius: 4px;
+    width: 100%;
+    max-width: 300px;
+    box-sizing: border-box;
+  }
+  label {
+    font-weight: 600;
+    margin-top: 1rem;
+  }
+  button#convert {
+    background-color: #007BFF; /* blue */
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  button#convert:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+  }
+  canvas {
+    margin-top: 1rem;
+    max-width: 90vw;
+    border: 1px solid #111;
+  }
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    color: #111;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid #ddd;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    z-index: 1000;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+  <h1>ImgConvert</h1>
+  <label for="upload">Upload Image:</label>
+  <input type="file" id="upload" accept=".jpg,.jpeg,.png,.bmp,.webp,.tiff" />
+
+  <label for="format">Convert to format:</label>
+  <select id="format" disabled>
+    <option value="">Select format...</option>
+  </select>
+
+  <label for="filename">Custom file name (without extension):</label>
+  <input type="text" id="filename" placeholder="Enter custom file name" disabled />
+
+  <button id="convert" disabled>Convert & Download</button>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <footer>Made with ❤️ by Sauravhhh</footer>
+
+<script>
+  const upload = document.getElementById('upload');
+  const formatSelect = document.getElementById('format');
+  const filenameInput = document.getElementById('filename');
+  const convertBtn = document.getElementById('convert');
+  const canvas = document.getElementById('canvas');
+  let img = null;
+  let fileType = '';
+  let originalName = '';
+
+  const formats = ['jpeg', 'jpg', 'png', 'webp', 'bmp', 'tiff'];
+
+  upload.addEventListener('change', () => {
+    const file = upload.files[0];
+    if (!file) {
+      resetUI();
+      return;
+    }
+    fileType = file.type.toLowerCase();
+    originalName = file.name.split('.').slice(0, -1).join('.');
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'bmp', 'webp', 'tiff', 'image/jpeg', 'image/png'].some(e => fileType.includes(e) || ext === e)) {
+      alert('Unsupported image format. Supported: JPG, JPEG, PNG, BMP, WebP, TIFF.');
+      resetUI();
+      return;
+    }
+
+    formatSelect.innerHTML = formats.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join('');
+    formatSelect.disabled = false;
+    filenameInput.disabled = false;
+    convertBtn.disabled = false;
+
+    // Load as image for canvas conversion
+    const reader = new FileReader();
+    reader.onload = e => {
+      img = new Image();
+      img.onload = () => {
+        canvas.style.display = 'none'; // hide initially
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  convertBtn.addEventListener('click', () => {
+    const outputFormat = formatSelect.value.toLowerCase();
+    if (!outputFormat) {
+      alert('Please select output format.');
+      return;
+    }
+    // Use custom file name if provided; otherwise use original name
+    let fileName = filenameInput.value.trim() || originalName || 'converted_image';
+
+    if (!img) {
+      alert('Please upload a valid image file first.');
+      return;
+    }
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Fill white background for jpg/jpeg, tiff, bmp outputs
+    if (['jpg', 'jpeg', 'tiff', 'bmp'].includes(outputFormat)) {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0);
+
+    let mimeType = 'image/png';
+    if (outputFormat === 'jpg' || outputFormat === 'jpeg') mimeType = 'image/jpeg';
+    else if (outputFormat === 'webp') mimeType = 'image/webp';
+    else if (outputFormat === 'png') mimeType = 'image/png';
+    else if (outputFormat === 'bmp') mimeType = 'image/bmp';
+    else if (outputFormat === 'tiff') mimeType = 'image/tiff';
+
+    const quality = mimeType === 'image/jpeg' || mimeType === 'image/webp' ? 0.92 : undefined;
+    canvas.toBlob(blob => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName + '.' + outputFormat;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } else {
+        alert('Conversion failed.');
+      }
+    }, mimeType, quality);
+  });
+
+  function resetUI() {
+    formatSelect.innerHTML = '<option value="">Select format...</option>';
+    formatSelect.disabled = true;
+    filenameInput.value = '';
+    filenameInput.disabled = true;
+    convertBtn.disabled = true;
+    img = null;
+    originalName = '';
+  }
+</script>
+</body>
+</html>
