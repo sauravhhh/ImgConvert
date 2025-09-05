@@ -15,7 +15,7 @@
     align-items: center;
     padding: 1rem;
     min-height: 100vh;
-    padding-bottom: 1.5rem; /* reduced space for footer */
+    padding-bottom: 1.5rem; /* space for footer */
   }
   input, select, button {
     font-size: 1rem;
@@ -46,6 +46,14 @@
     max-width: 90vw;
     border: 1px solid #111;
   }
+  #preview {
+    margin-top: 0.5rem;
+    max-width: 300px;
+    max-height: 200px;
+    border: 1px solid #111;
+    object-fit: contain;
+    display: none;
+  }
   footer {
     position: fixed;
     bottom: 0;
@@ -67,7 +75,8 @@
 <body>
   <h1>ImgConvert</h1>
   <label for="upload">Upload Image:</label>
-  <input type="file" id="upload" accept=".jpg,.jpeg,.png,.bmp,.webp,.tiff" />
+  <input type="file" id="upload" accept=".jpg,.jpeg,.png,.webp" />
+  <img id="preview" alt="Image preview" />
 
   <label for="format">Convert to format:</label>
   <select id="format" disabled>
@@ -85,6 +94,7 @@
 
 <script>
   const upload = document.getElementById('upload');
+  const preview = document.getElementById('preview');
   const formatSelect = document.getElementById('format');
   const filenameInput = document.getElementById('filename');
   const convertBtn = document.getElementById('convert');
@@ -93,7 +103,7 @@
   let fileType = '';
   let originalName = '';
 
-  const formats = ['jpeg', 'jpg', 'png', 'webp', 'bmp', 'tiff'];
+  const formats = ['jpeg', 'jpg', 'png', 'webp'];
 
   upload.addEventListener('change', () => {
     const file = upload.files[0];
@@ -104,8 +114,8 @@
     fileType = file.type.toLowerCase();
     originalName = file.name.split('.').slice(0, -1).join('.');
     const ext = file.name.split('.').pop().toLowerCase();
-    if (!['jpg', 'jpeg', 'png', 'bmp', 'webp', 'tiff', 'image/jpeg', 'image/png'].some(e => fileType.includes(e) || ext === e)) {
-      alert('Unsupported image format. Supported: JPG, JPEG, PNG, BMP, WebP, TIFF.');
+    if (!['jpg', 'jpeg', 'png', 'webp', 'image/jpeg', 'image/png'].some(e => fileType.includes(e) || ext === e)) {
+      alert('Unsupported image format. Supported: JPG, JPEG, PNG, WebP.');
       resetUI();
       return;
     }
@@ -115,12 +125,13 @@
     filenameInput.disabled = false;
     convertBtn.disabled = false;
 
-    // Load as image for canvas conversion
     const reader = new FileReader();
     reader.onload = e => {
       img = new Image();
       img.onload = () => {
-        canvas.style.display = 'none'; // hide initially
+        canvas.style.display = 'none';
+        preview.style.display = 'block';
+        preview.src = img.src;
       };
       img.src = e.target.result;
     };
@@ -133,7 +144,6 @@
       alert('Please select output format.');
       return;
     }
-    // Use custom file name if provided; otherwise use original name
     let fileName = filenameInput.value.trim() || originalName || 'converted_image';
 
     if (!img) {
@@ -146,21 +156,14 @@
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fill white background for jpg/jpeg, tiff, bmp outputs
-    if (['jpg', 'jpeg', 'tiff', 'bmp'].includes(outputFormat)) {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
     ctx.drawImage(img, 0, 0);
 
     let mimeType = 'image/png';
     if (outputFormat === 'jpg' || outputFormat === 'jpeg') mimeType = 'image/jpeg';
     else if (outputFormat === 'webp') mimeType = 'image/webp';
     else if (outputFormat === 'png') mimeType = 'image/png';
-    else if (outputFormat === 'bmp') mimeType = 'image/bmp';
-    else if (outputFormat === 'tiff') mimeType = 'image/tiff';
 
-    const quality = mimeType === 'image/jpeg' || mimeType === 'image/webp' ? 0.92 : undefined;
+    const quality = (mimeType === 'image/jpeg' || mimeType === 'image/webp') ? 0.92 : undefined;
     canvas.toBlob(blob => {
       if (blob) {
         const url = URL.createObjectURL(blob);
@@ -185,7 +188,10 @@
     convertBtn.disabled = true;
     img = null;
     originalName = '';
+    preview.style.display = 'none';
+    preview.src = '';
   }
 </script>
 </body>
 </html>
+ 
